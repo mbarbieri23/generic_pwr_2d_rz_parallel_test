@@ -1,0 +1,80 @@
+#!/bin/bash
+# Determine OpenFOAM distribution from WM_PROJECT_VERSION
+if [ -z "$WM_PROJECT_VERSION" ]; then
+    echo "ERROR: WM_PROJECT_VERSION is not set. Is OpenFOAM sourced?" >&2
+    exit 1
+fi
+
+if [[ "$WM_PROJECT_VERSION" == v* ]]; then
+    FOAM_DIST="ESI"
+elif [[ -n "$WM_PROJECT_VERSION" ]]; then
+    FOAM_DIST="FOUNDATION"
+else
+    echo "ERROR: Could not determine OpenFOAM distribution from WM_PROJECT_VERSION='$WM_PROJECT_VERSION'" >&2
+    exit 1
+fi
+
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+parallel=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --parallel|--p|-p)
+            parallel="true"
+            nProc="$2"
+            shift 2
+            ;;
+        --*)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+        *)
+            echo "Unexpected argument: $1 (did you forget --parallel ?)"
+            exit 1
+            ;;
+    esac
+done
+
+# # python3 rodMaker.py
+# # mv blockMeshDict system
+
+# if [[ "$FOAM_DIST" == "FOUNDATION" ]]; then
+#   # FOUNDATION syntax
+# #   blockMesh > log.blockMesh
+#   runApplication -o blockMesh 
+# #   transformPoints "translate=(0.0 0.0 1.35)"
+# else
+#   # ESI/OpenFOAM syntax
+# #   blockMesh -merge-points > log.blockMesh
+#   runApplication -o blockMesh -merge-points
+# #   transformPoints -translate "(0.0 0.0 1.35)"
+# fi
+
+
+if [ "$parallel" = true ]; then
+
+    # runApplication -o -s decompose foamDictionary system/decomposeParDict -entry method -set 'simple' &> /dev/null
+    # runApplication -o -s decompose foamDictionary system/decomposeParDict -entry method -set 'hierarchical' &> /dev/null
+    runApplication -o -s decompose foamDictionary system/decomposeParDict -entry method -set 'manual' &> /dev/null
+    runApplication -o -s decompose foamDictionary system/decomposeParDict -entry manualCoeffs/dataFile -set \"cellToProcMap\" &> /dev/null
+    # exit 0 
+    
+    runApplication -a -s decompose foamDictionary system/decomposeParDict -entry numberOfSubdomains -set $nProc &> /dev/null
+    runApplication -a -s decompose foamDictionary system/decomposeParDict -entry hierarchicalCoeffs/n -set "(1 1 $nProc)" &> /dev/null
+
+    runApplication -a -s decompose foamDictionary system/decomposeParDict -entry simpleCoeffs/n -set "(1 1 $nProc)" &> /dev/null
+    
+    # runApplication -o createSetFieldsDict
+    runApplication -o mapCellToProc
+
+    runApplication -o decomposePar -cellDist -force 
+    
+    
+    runParallel -o offbeat
+    
+    runApplication -o reconstructPar
+else
+    runApplication -o offbeat 
+fi
+
+echo "==== DONE ==="

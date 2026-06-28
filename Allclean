@@ -1,0 +1,19 @@
+#!/bin/bash
+cd ${0%/*} || exit 1    # run from this directory
+
+# rm -rfv constant/polyMesh
+
+rm -v constant/cellToProcMap
+rm -v constant/cellDecomposition
+rm -v system/setFieldsDict
+
+foamListTimes -rm
+rm -v log.*
+rm -v *.png
+rm -v *.OpenFOAM
+rm -v *.foam
+rm -v -r postProcessing
+rm -v ./0/cellToRegion
+rm -v input_check.txt
+rm -v blockMeshDict
+rm -rv processor*
