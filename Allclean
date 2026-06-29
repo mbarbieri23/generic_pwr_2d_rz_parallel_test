@@ -3,6 +3,7 @@ cd ${0%/*} || exit 1    # run from this directory
 
 # rm -rfv constant/polyMesh
 
+rm -v 0/cellDist
 rm -v constant/cellToProcMap
 rm -v constant/cellDecomposition
 rm -v system/setFieldsDict
